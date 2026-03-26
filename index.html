@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Catálogo de Libros</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="container py-5">
+    <h2 class="mb-4">Gestión de Libros (RAE 8)</h2>
+    
+    <div id="alertaError" class="alert alert-danger d-none"></div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <form id="formLibro" class="card p-3 shadow-sm">
+                <h5 class="card-title">Nuevo Libro</h5>
+                <input type="text" id="titulo" class="form-control mb-2" placeholder="Título" required>
+                <input type="text" id="autor" class="form-control mb-2" placeholder="Autor" required>
+                <input type="number" id="precio" class="form-control mb-3" step="0.01" placeholder="Precio" required>
+                <button type="submit" class="btn btn-success">Guardar</button>
+            </form>
+        </div>
+
+        <div class="col-md-8">
+            <table class="table table-bordered shadow-sm">
+                <thead class="table-dark">
+                    <tr><th>ID</th><th>Título</th><th>Autor</th><th>Precio</th><th>Acción</th></tr>
+                </thead>
+                <tbody id="tablaCuerpo"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:5019/api/Libros";
+        const alerta = document.getElementById("alertaError");
+
+        function mostrarError(msg) {
+            alerta.textContent = msg;
+            alerta.classList.remove("d-none");
+        }
+
+        async function obtenerLibros() {
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Fallo al obtener los datos");
+                const libros = await res.json();
+                
+                document.getElementById("tablaCuerpo").innerHTML = libros.map(l => `
+                    <tr>
+                        <td>${l.id}</td><td>${l.titulo}</td><td>${l.autor}</td><td>$${l.precio.toFixed(2)}</td>
+                        <td><button class="btn btn-danger btn-sm" onclick="borrarLibro(${l.id})">Borrar</button></td>
+                    </tr>
+                `).join("");
+                alerta.classList.add("d-none");
+            } catch (e) { mostrarError(e.message); }
+        }
+
+        document.getElementById("formLibro").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const nuevo = {
+                titulo: document.getElementById("titulo").value,
+                autor: document.getElementById("autor").value,
+                precio: parseFloat(document.getElementById("precio").value)
+            };
+            try {
+                const res = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(nuevo)
+                });
+                if (res.ok) {
+                    document.getElementById("formLibro").reset();
+                    obtenerLibros();
+                } else throw new Error("Error al guardar");
+            } catch (err) { mostrarError(err.message); }
+        });
+
+        async function borrarLibro(id) {
+            if (!confirm("¿Eliminar?")) return;
+            try {
+                const res = await fetch(`${API_URL}/${id}`, { method: "DELETE" });
+                if (res.ok) obtenerLibros();
+                else throw new Error("Error al eliminar");
+            } catch (error) { mostrarError(error.message); }
+        }
+
+        window.onload = obtenerLibros;
+    </script>
+</body>
+</html>
